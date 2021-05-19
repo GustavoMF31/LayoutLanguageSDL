@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DataKinds, TypeApplications #-}
+{-# LANGUAGE OverloadedStrings, DataKinds #-}
 module Main where
 
 import Foreign.C.Types (CInt)
@@ -6,7 +6,7 @@ import Foreign.C.Types (CInt)
 import qualified SDL
 import SDL (V2(..), get, ($=))
 
-import Widget (Widget, WidgetSizeDependency(..), flexibleSquare, row, limit, alignLeft, alignTop)
+import Widget --(Widget, WidgetSizeDependency(..), flexibleSquare, row, limit, alignLeft, alignTop)
 import Drawable
 
 defaultWindowSize :: V2 CInt
@@ -15,10 +15,12 @@ defaultWindowSize = 40 * V2 9 16
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
 -- render = flexibleSquare pink
-render = alignTop @MaxBounded $ alignLeft @ConstantSized $ row @ConstantSized
-    [ limit 100 100 $ flexibleSquare pink
-    , limit 100 100 $ flexibleSquare blue
-    , limit 100 100 $ flexibleSquare red
+render = alignLeft $ row
+    [ fixedSize 100 $ flexibleSquare pink
+    , fixedSize 100 $ flexibleSquare blue
+    , fixedSize 100 $ flexibleSquare red
+    -- , fixedSizeX 100 $ flexibleSquare blue
+    -- , fixedSizeX 100 $ flexibleSquare red
     ]
 
 -- Works for alt-f4 or the window's X button

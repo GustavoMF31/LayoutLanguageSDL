@@ -1,6 +1,8 @@
-{-# LANGUAGE DataKinds, TypeFamilies, AllowAmbiguousTypes, ScopedTypeVariables, TypeApplications #-}
+{-# LANGUAGE DataKinds, TypeFamilies, TypeFamilyDependencies, NoStarIsType #-}
 
 module Widget where
+
+import Data.Kind (Type)
 
 import Foreign.C.Types (CInt)
 
@@ -18,14 +20,12 @@ import Drawable
 
 data WidgetSizeDependency
     = ConstantSized
-    | MinBounded
     | MaxBounded
     | MinMaxBounded
 
 -- type WidgetDependency :: WidgetSizeDependency -> Type
-type family WidgetDependency x where
+type family WidgetDependency (x :: WidgetSizeDependency) = (r :: Type) | r -> x where
     WidgetDependency ConstantSized = ()
-    WidgetDependency MinBounded = CInt
     WidgetDependency MaxBounded = CInt
     WidgetDependency MinMaxBounded = (CInt, CInt)
 
@@ -49,8 +49,8 @@ besides f g _ yConstraint = MkDrawable (fPrimitives ++ shiftPrimitives (V2 fSize
 empty :: Widget ConstantSized b
 empty _ _ = MkDrawable [] $ MkLayoutData $ SDL.Rectangle (P $ V2 0 0) (V2 0 0)
 
-row :: forall a. [Widget ConstantSized a] -> Widget ConstantSized a
-row = foldr (besides @a) (empty @a)
+row :: [Widget ConstantSized a] -> Widget ConstantSized a
+row = foldr besides empty
 
 flexibleSquare :: Color -> Widget MaxBounded MaxBounded
 flexibleSquare color width height =
@@ -64,10 +64,12 @@ fixedSizeY :: CInt -> Widget a MaxBounded -> Widget a ConstantSized
 fixedSizeY size f = flip $ const $ flip f size
 
 limit :: CInt -> CInt -> Widget MaxBounded MaxBounded -> Widget ConstantSized ConstantSized
-limit limitX limitY = fixedSizeY @ConstantSized limitY . fixedSize @MaxBounded limitX
+limit limitX limitY = fixedSizeY limitY . fixedSize limitX
 
 alignLeft :: Widget ConstantSized a -> Widget MaxBounded a
 alignLeft w = const $ w ()
 
 alignTop :: Widget a ConstantSized -> Widget a MaxBounded
 alignTop w = flip $ const $ flip w $ ()
+
+-- TODO: alignRatio, alignRight, alignLeft
