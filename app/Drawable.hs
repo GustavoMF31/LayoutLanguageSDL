@@ -6,13 +6,18 @@ module Drawable
     , Color
     , pink
     , blue
+    , lightBlue
     , red
     , black
+    , white
+    , combineRect
+    , nextToHorizontally
     , emptyDrawable
     , drawableSize
     , drawablePosition
     , drawableWidth
     , drawableHeight
+    , overlayDrawable
     , shiftPrimitives
     , shiftBy
     , shiftX
@@ -81,17 +86,36 @@ shiftX = shiftBy . flip V2 0
 shiftY :: CInt -> Drawable -> Drawable
 shiftY = shiftBy . V2 0
 
-pink :: Color
-pink = V4 255 0 255 255
+combineRect
+    :: (CInt -> CInt -> CInt)
+    -> (CInt -> CInt -> CInt)
+    -> (CInt -> CInt -> CInt)
+    -> (CInt -> CInt -> CInt)
+    -> SDL.Rectangle CInt
+    -> SDL.Rectangle CInt
+    -> SDL.Rectangle CInt
+combineRect f g j k (SDL.Rectangle (P (V2 x y)) (V2 w h)) (SDL.Rectangle (P (V2 x' y')) (V2 w' h')) =
+    SDL.Rectangle (P $ V2 (f x x') (g y y')) (V2 (j w w') (k h h'))
 
-blue :: Color
-blue = V4 0 0 255 255
+overlayDrawable :: Drawable -> Drawable -> Drawable
+overlayDrawable = combineDrawable $ combineRect min min max max
 
-red :: Color
-red = V4 255 0 0 255
+nextToHorizontally :: Drawable -> Drawable -> Drawable
+nextToHorizontally = combineDrawable $ combineRect min min (+) max
 
-black :: Color
-black = V4 0 0 0 255
+combineDrawable
+    :: (SDL.Rectangle CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt)
+    -> Drawable -> Drawable -> Drawable
+combineDrawable f (MkDrawable primitivesBelow (MkLayoutData rect)) (MkDrawable primitivesAbove (MkLayoutData rect')) =
+    MkDrawable (primitivesBelow ++ primitivesAbove) (MkLayoutData $ f rect rect')
+
+pink, blue, lightBlue, red, black, white :: Color
+pink      = V4 255 0   255 255
+blue      = V4 0   0   255 255
+lightBlue = V4 33  150 243 255 -- The default blue used by Flutter
+red       = V4 255 0   0   255
+black     = V4 0   0   0   255
+white     = V4 255 255 255 255
 
 drawPrimitive :: SDL.Renderer -> DrawingPrimitive -> IO ()
 drawPrimitive renderer (Square color rectangle) = do

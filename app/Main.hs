@@ -16,11 +16,14 @@ defaultWindowSize = 40 * V2 9 16
 render :: Widget MaxBounded MaxBounded
 -- render = alignRight $ row $ map (fixedSize 100 . flexibleSquare) [pink, blue, red]
 -- render = center $ limitSize 100 200 $ flexibleSquare blue
-render = centerY $ limitSizeY 100 $ distributedX
+render = centerY $ flip nextTo (limitSizeY 100 $ flexibleSquare pink) $ limitSizeX 150 $ nextTo (limitSize 100 100 (flexibleSquare blue)) (limitSizeY 100 $ flexibleSquare red)
+{-
+render = coloredBackgroud white $ centerY $ limitSizeY 100 $ distributedX
     [ (1, flexibleSquare blue)
     , (2, flexibleSquare pink)
     , (1, flexibleSquare red )
     ]
+-}
 
 -- Works for alt-f4 or the window's X button
 shouldQuit :: [SDL.Event] -> Bool

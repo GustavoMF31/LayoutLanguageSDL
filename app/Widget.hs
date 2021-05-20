@@ -20,6 +20,9 @@ module Widget
     , center
     , distributedX
     , spaceEvenlyX
+    , overlay
+    , nextTo
+    , coloredBackgroud
     ) where
 
 import Data.Kind (Type)
@@ -35,6 +38,9 @@ import Drawable
     , DrawingPrimitive(..)
     , Color
     , shiftPrimitives
+    , combineRect
+    , nextToHorizontally
+    , overlayDrawable
     , emptyDrawable
     , shiftX
     , shiftY
@@ -58,9 +64,9 @@ type family WidgetDependency (x :: WidgetSizeDependency) = (r :: Type) | r -> x 
 type Widget a b = WidgetDependency a -> WidgetDependency b -> Drawable
 
 expandSideways :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt
-expandSideways (SDL.Rectangle (P (V2 x y)) (V2 w h)) (SDL.Rectangle (P (V2 x' y')) (V2 w' h')) = 
-    SDL.Rectangle (P $ V2 (min x x') (min y y')) (V2 (w + w') (max h h'))
+expandSideways = combineRect min min (+) max
 
+-- Todo: Rewrite this using the new functions from Drawable
 besides :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
 besides f g _ yConstraint = MkDrawable (fPrimitives ++ shiftPrimitives (V2 fSize 0) gPrimitives) $
     MkLayoutData $ expandSideways fBoundingBox gBoundingBox
@@ -71,7 +77,22 @@ besides f g _ yConstraint = MkDrawable (fPrimitives ++ shiftPrimitives (V2 fSize
     (MkDrawable gPrimitives (MkLayoutData gBoundingBox)) = g () yConstraint
     fSize = rectWidth fBoundingBox
 
--- TODO: overlay, below, column, margin
+(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(.:) = (.) . (.)
+
+-- Subtracts two `CInt`s, but ensures the result is not negative
+subtractPixels :: CInt -> CInt -> CInt
+subtractPixels = max 0 .: (-)
+
+nextTo :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
+nextTo f g maxBound yConstraint = nextToHorizontally fDrawable $ shiftX fWidth $ g (subtractPixels maxBound fWidth) yConstraint
+  where
+    fDrawable :: Drawable
+    fDrawable = f () yConstraint
+
+    fWidth = drawableWidth fDrawable
+
+-- TODO: below, column, margin
 
 empty :: Widget a b
 empty _ _ = emptyDrawable
@@ -141,3 +162,9 @@ distributedX widgets availableWidth = case safeDiv availableWidth (sum $ map fst
 
 spaceEvenlyX :: [Widget MaxBounded a] -> Widget MaxBounded a
 spaceEvenlyX = distributedX . map (1,)
+
+overlay :: Widget a b -> Widget a b -> Widget a b
+overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY) (g constraintX constraintY)
+
+coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
+coloredBackgroud = overlay . flexibleSquare
