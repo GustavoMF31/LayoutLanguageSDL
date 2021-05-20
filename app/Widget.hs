@@ -1,6 +1,26 @@
-{-# LANGUAGE DataKinds, TypeFamilies, TypeFamilyDependencies, NoStarIsType #-}
+{-# LANGUAGE DataKinds, TypeFamilyDependencies, NoStarIsType, TupleSections #-}
 
-module Widget where
+module Widget
+    ( WidgetSizeDependency(..)
+    , Widget
+    , row
+    , flexibleSquare
+    , limitSizeX
+    , limitSizeY
+    , limitSize
+    , alignRatioX
+    , alignRatioY
+    , alignRatio
+    , alignLeft
+    , centerX
+    , alignRight
+    , alignTop
+    , centerY
+    , alignBottom
+    , center
+    , distributedX
+    , spaceEvenlyX
+    ) where
 
 import Data.Kind (Type)
 
@@ -15,6 +35,11 @@ import Drawable
     , DrawingPrimitive(..)
     , Color
     , shiftPrimitives
+    , emptyDrawable
+    , shiftX
+    , shiftY
+    , drawableWidth
+    , drawableHeight
     , xCoord
     )
 
@@ -40,14 +65,16 @@ besides :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSi
 besides f g _ yConstraint = MkDrawable (fPrimitives ++ shiftPrimitives (V2 fSize 0) gPrimitives) $
     MkLayoutData $ expandSideways fBoundingBox gBoundingBox
   where
-    width (SDL.Rectangle _ size) = xCoord size
+    rectWidth (SDL.Rectangle _ size) = xCoord size
 
     (MkDrawable fPrimitives (MkLayoutData fBoundingBox)) = f () yConstraint
     (MkDrawable gPrimitives (MkLayoutData gBoundingBox)) = g () yConstraint
-    fSize = width fBoundingBox
+    fSize = rectWidth fBoundingBox
 
-empty :: Widget ConstantSized b
-empty _ _ = MkDrawable [] $ MkLayoutData $ SDL.Rectangle (P $ V2 0 0) (V2 0 0)
+-- TODO: overlay, below, column, margin
+
+empty :: Widget a b
+empty _ _ = emptyDrawable
 
 row :: [Widget ConstantSized a] -> Widget ConstantSized a
 row = foldr besides empty
@@ -57,19 +84,60 @@ flexibleSquare color width height =
     let rect = SDL.Rectangle (P $ V2 0 0) (V2 width height)
     in MkDrawable [Square color rect] $ MkLayoutData rect
 
-fixedSize :: CInt -> Widget MaxBounded a -> Widget ConstantSized a
-fixedSize size f _ = f size
+limitSizeX :: CInt -> Widget MaxBounded a -> Widget ConstantSized a
+limitSizeX size f _ = f size
 
-fixedSizeY :: CInt -> Widget a MaxBounded -> Widget a ConstantSized
-fixedSizeY size f = flip $ const $ flip f size
+limitSizeY :: CInt -> Widget a MaxBounded -> Widget a ConstantSized
+limitSizeY size f = flip $ const $ flip f size
 
-limit :: CInt -> CInt -> Widget MaxBounded MaxBounded -> Widget ConstantSized ConstantSized
-limit limitX limitY = fixedSizeY limitY . fixedSize limitX
+limitSize :: CInt -> CInt -> Widget MaxBounded MaxBounded -> Widget ConstantSized ConstantSized
+limitSize limitX limitY = limitSizeY limitY . limitSizeX limitX
+
+-- It would be nice to reduce this code duplication between axis
+-- (but refactoring might require more type families and possibily a singleton)
+alignRatioX :: Double -> Widget ConstantSized a -> Widget MaxBounded a
+alignRatioX ratio w availableWidth yConstraint = shiftX (round $ ratio * fromIntegral (availableWidth - drawableWidth drawable)) drawable
+  where
+    drawable = w () yConstraint
+
+alignRatioY :: Double -> Widget a ConstantSized -> Widget a MaxBounded
+alignRatioY ratio w xConstraint availableHeight = shiftY (round $ ratio * fromIntegral (availableHeight - drawableHeight drawable)) drawable
+  where
+    drawable = w xConstraint ()
+
+alignRatio :: Double -> Double -> Widget ConstantSized ConstantSized -> Widget MaxBounded MaxBounded
+alignRatio ratioX ratioY = alignRatioX ratioX . alignRatioY ratioY
 
 alignLeft :: Widget ConstantSized a -> Widget MaxBounded a
-alignLeft w = const $ w ()
+alignLeft = alignRatioX 0
+
+centerX :: Widget ConstantSized a -> Widget MaxBounded a
+centerX = alignRatioX 0.5
+
+alignRight :: Widget ConstantSized a -> Widget MaxBounded a
+alignRight = alignRatioX 1
 
 alignTop :: Widget a ConstantSized -> Widget a MaxBounded
-alignTop w = flip $ const $ flip w $ ()
+alignTop = alignRatioY 0
 
--- TODO: alignRatio, alignRight, alignLeft
+centerY :: Widget a ConstantSized -> Widget a MaxBounded
+centerY = alignRatioY 0.5
+
+alignBottom :: Widget a ConstantSized -> Widget a MaxBounded
+alignBottom = alignRatioY 1
+
+center :: Widget ConstantSized ConstantSized -> Widget MaxBounded MaxBounded
+center = centerX . centerY
+
+safeDiv :: Integral a => a -> a -> Maybe a
+safeDiv x y
+    | y == 0 = Nothing
+    | otherwise = Just $ div x y
+
+distributedX :: [(CInt, Widget MaxBounded a)] -> Widget MaxBounded a
+distributedX widgets availableWidth = case safeDiv availableWidth (sum $ map fst widgets) of
+    Nothing -> const emptyDrawable
+    Just widthPerPart -> ($ ()) $ row $ map (\(parts, widget) () -> widget (parts * widthPerPart)) widgets
+
+spaceEvenlyX :: [Widget MaxBounded a] -> Widget MaxBounded a
+spaceEvenlyX = distributedX . map (1,)

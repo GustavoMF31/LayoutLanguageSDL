@@ -14,13 +14,12 @@ defaultWindowSize = 40 * V2 9 16
 
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
--- render = flexibleSquare pink
-render = alignLeft $ row
-    [ fixedSize 100 $ flexibleSquare pink
-    , fixedSize 100 $ flexibleSquare blue
-    , fixedSize 100 $ flexibleSquare red
-    -- , fixedSizeX 100 $ flexibleSquare blue
-    -- , fixedSizeX 100 $ flexibleSquare red
+-- render = alignRight $ row $ map (fixedSize 100 . flexibleSquare) [pink, blue, red]
+-- render = center $ limitSize 100 200 $ flexibleSquare blue
+render = centerY $ limitSizeY 100 $ distributedX
+    [ (1, flexibleSquare blue)
+    , (2, flexibleSquare pink)
+    , (1, flexibleSquare red )
     ]
 
 -- Works for alt-f4 or the window's X button

@@ -8,8 +8,11 @@ module Drawable
     , blue
     , red
     , black
+    , emptyDrawable
     , drawableSize
     , drawablePosition
+    , drawableWidth
+    , drawableHeight
     , shiftPrimitives
     , shiftBy
     , shiftX
@@ -21,12 +24,13 @@ import Data.Word (Word8)
 import Data.Foldable (traverse_)
 import Foreign.C.Types (CInt)
 
-import SDL (V2(..), V4(..), Point, (.+^), ($=))
+import SDL (V2(..), V4(..), Point(..), (.+^), ($=))
 import qualified SDL
 
 type Color = V4 Word8
 
 data DrawingPrimitive = Square Color (SDL.Rectangle CInt) -- | Circle Color {- radius -} CInt
+-- TODO: Make the layout data hold just the size, without an accompanying position
 newtype LayoutData = MkLayoutData (SDL.Rectangle CInt) -- The widget's bounding box
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
 
@@ -36,8 +40,20 @@ drawableSize (MkDrawable _ (MkLayoutData (SDL.Rectangle _ size))) = size
 drawablePosition :: Drawable -> Point V2 CInt
 drawablePosition (MkDrawable _ (MkLayoutData (SDL.Rectangle pos _))) = pos
 
+emptyDrawable :: Drawable
+emptyDrawable = MkDrawable [] $ MkLayoutData $ SDL.Rectangle (P $ V2 0 0) (V2 0 0)
+
 xCoord :: V2 a -> a
 xCoord (V2 x _) = x
+
+yCoord :: V2 a -> a
+yCoord (V2 _ y) = y
+
+drawableWidth :: Drawable -> CInt
+drawableWidth = xCoord . drawableSize
+
+drawableHeight :: Drawable -> CInt
+drawableHeight = yCoord . drawableSize
 
 shiftRect :: V2 CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt
 shiftRect v2 (SDL.Rectangle pos size) = SDL.Rectangle (pos .+^ v2) size
