@@ -14,9 +14,10 @@ defaultWindowSize = 40 * V2 9 16
 
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
--- render = alignRight $ row $ map (fixedSize 100 . flexibleSquare) [pink, blue, red]
+render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
+-- render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]
 -- render = center $ limitSize 100 200 $ flexibleSquare blue
-render = centerY $ flip nextTo (limitSizeY 100 $ flexibleSquare pink) $ limitSizeX 150 $ nextTo (limitSize 100 100 (flexibleSquare blue)) (limitSizeY 100 $ flexibleSquare red)
+-- render = centerY $ flip nextTo (limitSizeY 100 $ flexibleSquare pink) $ limitSizeX 150 $ nextTo (limitSize 100 100 (flexibleSquare blue)) (limitSizeY 100 $ flexibleSquare red)
 {-
 render = coloredBackgroud white $ centerY $ limitSizeY 100 $ distributedX
     [ (1, flexibleSquare blue)

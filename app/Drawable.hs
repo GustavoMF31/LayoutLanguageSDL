@@ -10,43 +10,34 @@ module Drawable
     , red
     , black
     , white
-    , combineRect
     , nextToHorizontally
     , emptyDrawable
     , drawableSize
-    , drawablePosition
     , drawableWidth
     , drawableHeight
     , overlayDrawable
-    , shiftPrimitives
-    , shiftBy
     , shiftX
     , shiftY
-    , xCoord
     ) where
 
 import Data.Word (Word8)
 import Data.Foldable (traverse_)
 import Foreign.C.Types (CInt)
 
-import SDL (V2(..), V4(..), Point(..), (.+^), ($=))
+import SDL (V2(..), V4(..), (.+^), ($=))
 import qualified SDL
 
 type Color = V4 Word8
 
 data DrawingPrimitive = Square Color (SDL.Rectangle CInt) -- | Circle Color {- radius -} CInt
--- TODO: Make the layout data hold just the size, without an accompanying position
-newtype LayoutData = MkLayoutData (SDL.Rectangle CInt) -- The widget's bounding box
+newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
 
 drawableSize :: Drawable -> V2 CInt
-drawableSize (MkDrawable _ (MkLayoutData (SDL.Rectangle _ size))) = size
-
-drawablePosition :: Drawable -> Point V2 CInt
-drawablePosition (MkDrawable _ (MkLayoutData (SDL.Rectangle pos _))) = pos
+drawableSize (MkDrawable _ (MkLayoutData size)) = size
 
 emptyDrawable :: Drawable
-emptyDrawable = MkDrawable [] $ MkLayoutData $ SDL.Rectangle (P $ V2 0 0) (V2 0 0)
+emptyDrawable = MkDrawable [] $ MkLayoutData $ V2 0 0
 
 xCoord :: V2 a -> a
 xCoord (V2 x _) = x
@@ -73,41 +64,25 @@ shiftVisually :: V2 CInt -> Drawable -> Drawable
 shiftVisually v2 (MkDrawable primitives layoutData) =
     MkDrawable (shiftPrimitives v2 primitives) layoutData
 
-shiftPhysically :: V2 CInt -> Drawable -> Drawable
-shiftPhysically v2 (MkDrawable primitives (MkLayoutData rect)) =
-    MkDrawable primitives $ MkLayoutData $ shiftRect v2 rect
-
-shiftBy :: V2 CInt -> Drawable -> Drawable
-shiftBy v2 = shiftPhysically v2 . shiftVisually v2
-
 shiftX :: CInt -> Drawable -> Drawable
-shiftX = shiftBy . flip V2 0
+shiftX = shiftVisually . flip V2 0
 
 shiftY :: CInt -> Drawable -> Drawable
-shiftY = shiftBy . V2 0
-
-combineRect
-    :: (CInt -> CInt -> CInt)
-    -> (CInt -> CInt -> CInt)
-    -> (CInt -> CInt -> CInt)
-    -> (CInt -> CInt -> CInt)
-    -> SDL.Rectangle CInt
-    -> SDL.Rectangle CInt
-    -> SDL.Rectangle CInt
-combineRect f g j k (SDL.Rectangle (P (V2 x y)) (V2 w h)) (SDL.Rectangle (P (V2 x' y')) (V2 w' h')) =
-    SDL.Rectangle (P $ V2 (f x x') (g y y')) (V2 (j w w') (k h h'))
+shiftY = shiftVisually . V2 0
 
 overlayDrawable :: Drawable -> Drawable -> Drawable
-overlayDrawable = combineDrawable $ combineRect min min max max
+overlayDrawable = combineDrawable $ V2 max max
 
 nextToHorizontally :: Drawable -> Drawable -> Drawable
-nextToHorizontally = combineDrawable $ combineRect min min (+) max
+nextToHorizontally = combineDrawable $ V2 (+) max
 
 combineDrawable
-    :: (SDL.Rectangle CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt)
+    :: V2 (CInt -> CInt -> CInt)
     -> Drawable -> Drawable -> Drawable
-combineDrawable f (MkDrawable primitivesBelow (MkLayoutData rect)) (MkDrawable primitivesAbove (MkLayoutData rect')) =
-    MkDrawable (primitivesBelow ++ primitivesAbove) (MkLayoutData $ f rect rect')
+combineDrawable combineSizes
+    (MkDrawable primitivesBelow (MkLayoutData size))
+    (MkDrawable primitivesAbove (MkLayoutData size')) =
+      MkDrawable (primitivesBelow ++ primitivesAbove) (MkLayoutData $ combineSizes <*> size <*> size')
 
 pink, blue, lightBlue, red, black, white :: Color
 pink      = V4 255 0   255 255

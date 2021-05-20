@@ -37,8 +37,6 @@ import Drawable
     , LayoutData(..)
     , DrawingPrimitive(..)
     , Color
-    , shiftPrimitives
-    , combineRect
     , nextToHorizontally
     , overlayDrawable
     , emptyDrawable
@@ -46,7 +44,6 @@ import Drawable
     , shiftY
     , drawableWidth
     , drawableHeight
-    , xCoord
     )
 
 data WidgetSizeDependency
@@ -63,19 +60,11 @@ type family WidgetDependency (x :: WidgetSizeDependency) = (r :: Type) | r -> x 
 -- Widget :: WidgetSizeDependency -> WidgetSizeDependency -> Type
 type Widget a b = WidgetDependency a -> WidgetDependency b -> Drawable
 
-expandSideways :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt
-expandSideways = combineRect min min (+) max
-
--- Todo: Rewrite this using the new functions from Drawable
 besides :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
-besides f g _ yConstraint = MkDrawable (fPrimitives ++ shiftPrimitives (V2 fSize 0) gPrimitives) $
-    MkLayoutData $ expandSideways fBoundingBox gBoundingBox
+besides f g _ yConstraint  = nextToHorizontally fDrawable $ shiftX (drawableWidth fDrawable) gDrawable
   where
-    rectWidth (SDL.Rectangle _ size) = xCoord size
-
-    (MkDrawable fPrimitives (MkLayoutData fBoundingBox)) = f () yConstraint
-    (MkDrawable gPrimitives (MkLayoutData gBoundingBox)) = g () yConstraint
-    fSize = rectWidth fBoundingBox
+    fDrawable = f () yConstraint
+    gDrawable = g () yConstraint
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.) . (.)
@@ -85,7 +74,7 @@ subtractPixels :: CInt -> CInt -> CInt
 subtractPixels = max 0 .: (-)
 
 nextTo :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
-nextTo f g maxBound yConstraint = nextToHorizontally fDrawable $ shiftX fWidth $ g (subtractPixels maxBound fWidth) yConstraint
+nextTo f g xConstraint yConstraint = nextToHorizontally fDrawable $ shiftX fWidth $ g (subtractPixels xConstraint fWidth) yConstraint
   where
     fDrawable :: Drawable
     fDrawable = f () yConstraint
@@ -102,8 +91,8 @@ row = foldr besides empty
 
 flexibleSquare :: Color -> Widget MaxBounded MaxBounded
 flexibleSquare color width height =
-    let rect = SDL.Rectangle (P $ V2 0 0) (V2 width height)
-    in MkDrawable [Square color rect] $ MkLayoutData rect
+    let size = V2 width height
+    in MkDrawable [Square color (SDL.Rectangle (P $ V2 0 0) size)] $ MkLayoutData size
 
 limitSizeX :: CInt -> Widget MaxBounded a -> Widget ConstantSized a
 limitSizeX size f _ = f size
