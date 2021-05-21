@@ -3,7 +3,12 @@
 module Widget
     ( WidgetSizeDependency(..)
     , Widget
+    , beside
     , row
+    , below
+    , column
+    , toTheLeftOf
+    , above
     , flexibleSquare
     , limitSizeX
     , limitSizeY
@@ -21,7 +26,6 @@ module Widget
     , distributedX
     , spaceEvenlyX
     , overlay
-    , nextTo
     , coloredBackgroud
     ) where
 
@@ -36,14 +40,13 @@ import Drawable
     ( Drawable(..)
     , LayoutData(..)
     , DrawingPrimitive(..)
+    , Axis(..)
     , Color
-    , nextToHorizontally
+    , nextToForAxis
     , overlayDrawable
     , emptyDrawable
-    , shiftX
-    , shiftY
-    , drawableWidth
-    , drawableHeight
+    , shiftInAxis
+    , drawableSizeForAxis
     )
 
 data WidgetSizeDependency
@@ -60,12 +63,6 @@ type family WidgetDependency (x :: WidgetSizeDependency) = (r :: Type) | r -> x 
 -- Widget :: WidgetSizeDependency -> WidgetSizeDependency -> Type
 type Widget a b = WidgetDependency a -> WidgetDependency b -> Drawable
 
-besides :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
-besides f g _ yConstraint  = nextToHorizontally fDrawable $ shiftX (drawableWidth fDrawable) gDrawable
-  where
-    fDrawable = f () yConstraint
-    gDrawable = g () yConstraint
-
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.) . (.)
 
@@ -73,26 +70,70 @@ besides f g _ yConstraint  = nextToHorizontally fDrawable $ shiftX (drawableWidt
 subtractPixels :: CInt -> CInt -> CInt
 subtractPixels = max 0 .: (-)
 
-nextTo :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
-nextTo f g xConstraint yConstraint = nextToHorizontally fDrawable $ shiftX fWidth $ g (subtractPixels xConstraint fWidth) yConstraint
+flexibleSquare :: Color -> Widget MaxBounded MaxBounded
+flexibleSquare color width height =
+    let size = V2 width height
+    in MkDrawable [Square color (SDL.Rectangle (P $ V2 0 0) size)] $ MkLayoutData size
+
+besideForAxis :: Axis -> Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
+besideForAxis axis f g _ yConstraint  = nextToForAxis axis fDrawable $ shiftInAxis axis (drawableSizeForAxis axis fDrawable) gDrawable
+  where
+    fDrawable, gDrawable :: Drawable
+    fDrawable = f () yConstraint
+    gDrawable = g () yConstraint
+
+beside :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
+beside = besideForAxis XAxis
+
+adjustForYAxis
+    :: ((b' -> a' -> c') -> (b'' -> a'' -> c'') -> b -> a -> c)
+    ->  (a' -> b' -> c') -> (a'' -> b'' -> c'') -> a -> b -> c
+adjustForYAxis f a b = flip $ f (flip a) (flip b)
+
+below :: Widget a ConstantSized -> Widget a ConstantSized -> Widget a ConstantSized
+below = adjustForYAxis $ besideForAxis YAxis
+
+adjacentForAxis :: Axis -> Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
+adjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis fDrawable $
+    shiftInAxis axis fSize $ g (subtractPixels xConstraint fSize) yConstraint
   where
     fDrawable :: Drawable
     fDrawable = f () yConstraint
 
-    fWidth = drawableWidth fDrawable
+    fSize :: CInt
+    fSize = drawableSizeForAxis axis fDrawable
 
--- TODO: below, column, margin
+toTheLeftOf :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
+toTheLeftOf = adjacentForAxis XAxis
+
+above :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
+above = adjustForYAxis $ adjacentForAxis YAxis
+
+-- TODO: margin
+
+alignRatioForAxis
+    :: Axis
+    -> (WidgetDependency a -> Drawable)
+    -> Double
+    -> Widget MaxBounded a
+alignRatioForAxis axis getDrawable ratio availableSize otherConstraint =
+    let drawable = getDrawable otherConstraint
+    in shiftInAxis axis (round $ ratio * fromIntegral (availableSize - drawableSizeForAxis axis drawable)) drawable
+
+alignRatioX :: Double -> Widget ConstantSized a -> Widget MaxBounded a
+alignRatioX r w = alignRatioForAxis XAxis (w ()) r
+
+alignRatioY :: Double -> Widget a ConstantSized -> Widget a MaxBounded
+alignRatioY r w = flip $ alignRatioForAxis YAxis (flip w ()) r
 
 empty :: Widget a b
 empty _ _ = emptyDrawable
 
 row :: [Widget ConstantSized a] -> Widget ConstantSized a
-row = foldr besides empty
+row = foldr beside empty
 
-flexibleSquare :: Color -> Widget MaxBounded MaxBounded
-flexibleSquare color width height =
-    let size = V2 width height
-    in MkDrawable [Square color (SDL.Rectangle (P $ V2 0 0) size)] $ MkLayoutData size
+column :: [Widget a ConstantSized] -> Widget a ConstantSized
+column = foldr below empty
 
 limitSizeX :: CInt -> Widget MaxBounded a -> Widget ConstantSized a
 limitSizeX size f _ = f size
@@ -102,18 +143,6 @@ limitSizeY size f = flip $ const $ flip f size
 
 limitSize :: CInt -> CInt -> Widget MaxBounded MaxBounded -> Widget ConstantSized ConstantSized
 limitSize limitX limitY = limitSizeY limitY . limitSizeX limitX
-
--- It would be nice to reduce this code duplication between axis
--- (but refactoring might require more type families and possibily a singleton)
-alignRatioX :: Double -> Widget ConstantSized a -> Widget MaxBounded a
-alignRatioX ratio w availableWidth yConstraint = shiftX (round $ ratio * fromIntegral (availableWidth - drawableWidth drawable)) drawable
-  where
-    drawable = w () yConstraint
-
-alignRatioY :: Double -> Widget a ConstantSized -> Widget a MaxBounded
-alignRatioY ratio w xConstraint availableHeight = shiftY (round $ ratio * fromIntegral (availableHeight - drawableHeight drawable)) drawable
-  where
-    drawable = w xConstraint ()
 
 alignRatio :: Double -> Double -> Widget ConstantSized ConstantSized -> Widget MaxBounded MaxBounded
 alignRatio ratioX ratioY = alignRatioX ratioX . alignRatioY ratioY

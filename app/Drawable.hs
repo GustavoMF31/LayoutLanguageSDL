@@ -2,6 +2,7 @@ module Drawable
     ( Drawable(..)
     , LayoutData(..)
     , DrawingPrimitive(..)
+    , Axis(..)
     , draw
     , Color
     , pink
@@ -10,12 +11,11 @@ module Drawable
     , red
     , black
     , white
-    , nextToHorizontally
+    , nextToForAxis
     , emptyDrawable
-    , drawableSize
-    , drawableWidth
-    , drawableHeight
+    , drawableSizeForAxis
     , overlayDrawable
+    , shiftInAxis
     , shiftX
     , shiftY
     ) where
@@ -33,23 +33,26 @@ data DrawingPrimitive = Square Color (SDL.Rectangle CInt) -- | Circle Color {- r
 newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
 
+data Axis = XAxis | YAxis
+
 drawableSize :: Drawable -> V2 CInt
 drawableSize (MkDrawable _ (MkLayoutData size)) = size
 
 emptyDrawable :: Drawable
 emptyDrawable = MkDrawable [] $ MkLayoutData $ V2 0 0
 
-xCoord :: V2 a -> a
-xCoord (V2 x _) = x
+getComponent :: Axis -> V2 a -> a
+getComponent XAxis (V2 x _) =  x
+getComponent YAxis (V2 _ y) =  y
 
-yCoord :: V2 a -> a
-yCoord (V2 _ y) = y
+drawableSizeForAxis :: Axis -> Drawable -> CInt
+drawableSizeForAxis axis = getComponent axis . drawableSize
 
 drawableWidth :: Drawable -> CInt
-drawableWidth = xCoord . drawableSize
+drawableWidth = drawableSizeForAxis XAxis
 
 drawableHeight :: Drawable -> CInt
-drawableHeight = yCoord . drawableSize
+drawableHeight = drawableSizeForAxis YAxis
 
 shiftRect :: V2 CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt
 shiftRect v2 (SDL.Rectangle pos size) = SDL.Rectangle (pos .+^ v2) size
@@ -70,11 +73,22 @@ shiftX = shiftVisually . flip V2 0
 shiftY :: CInt -> Drawable -> Drawable
 shiftY = shiftVisually . V2 0
 
+shiftInAxis :: Axis -> CInt -> Drawable -> Drawable
+shiftInAxis XAxis = shiftX
+shiftInAxis YAxis = shiftY
+
 overlayDrawable :: Drawable -> Drawable -> Drawable
 overlayDrawable = combineDrawable $ V2 max max
 
 nextToHorizontally :: Drawable -> Drawable -> Drawable
 nextToHorizontally = combineDrawable $ V2 (+) max
+
+nextToVertically :: Drawable -> Drawable -> Drawable
+nextToVertically = combineDrawable $ V2 max (+)
+
+nextToForAxis :: Axis -> Drawable -> Drawable -> Drawable
+nextToForAxis XAxis = nextToHorizontally
+nextToForAxis YAxis = nextToVertically
 
 combineDrawable
     :: V2 (CInt -> CInt -> CInt)
