@@ -111,5 +111,10 @@ drawPrimitive renderer (Square color rectangle) = do
 drawPrimitive renderer (Ellipse color (P pos) radii@(V2 xRadius yRadius)) = do
     GFX.fillEllipse renderer (pos + radii) xRadius yRadius color
 
+    -- Rendering these extra outlines is a hack to make the resulting circle
+    -- a bit smoother
+    GFX.smoothEllipse renderer (pos + radii) (xRadius - 1) (yRadius - 1) color
+    GFX.smoothEllipse renderer (pos + radii) xRadius yRadius color
+
 draw :: SDL.Renderer -> Drawable -> IO ()
 draw renderer (MkDrawable primitives _) = traverse_ (drawPrimitive renderer) primitives

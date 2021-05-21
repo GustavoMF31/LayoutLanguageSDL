@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings, DataKinds #-}
-module Main where
 
 import Foreign.C.Types (CInt)
 
@@ -12,9 +11,16 @@ import Drawable
 defaultWindowSize :: V2 CInt
 defaultWindowSize = 40 * V2 9 16
 
+fab :: Widget MaxBounded MaxBounded
+fab = marginAround 30 $ alignBottom $ alignRight $ limitSize 70 70 $ flexibleCircle lightBlue
+
+appBar :: Widget MaxBounded ConstantSized
+appBar = limitSizeY 60 $ flexibleSquare lightBlue
+
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
-render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
+render = atop appBar (overlay (flexibleSquare white) fab)
+-- render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
 -- render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
 -- render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]
 -- render = center $ limitSize 100 200 $ flexibleSquare blue

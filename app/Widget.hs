@@ -8,7 +8,7 @@ module Widget
     , below
     , column
     , toTheLeftOf
-    , above
+    , atop
     , flexibleSquare
     , flexibleCircle
     , limitSizeX
@@ -126,8 +126,8 @@ adjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis fDrawable 
 toTheLeftOf :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
 toTheLeftOf = adjacentForAxis XAxis
 
-above :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
-above = adjustForYAxis2 $ adjacentForAxis YAxis
+atop :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
+atop = adjustForYAxis2 $ adjacentForAxis YAxis
 
 alignRatioForAxis
     :: Axis
@@ -216,7 +216,7 @@ overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY
 coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 coloredBackgroud = overlay . flexibleSquare
 
--- TODO: image, floatingActionButton
+-- TODO: images, writing text, rudimentary shadows
 aspectRatio :: Double -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 aspectRatio goalRatio w xConstraint yConstraint
     | actualRatio > goalRatio = w (round $ goalRatio * fromIntegral yConstraint) yConstraint
