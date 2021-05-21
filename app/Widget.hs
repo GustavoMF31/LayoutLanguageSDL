@@ -28,6 +28,7 @@ module Widget
     , spaceEvenlyX
     , overlay
     , coloredBackgroud
+    , aspectRatio
     ) where
 
 import Data.Kind (Type)
@@ -117,8 +118,6 @@ toTheLeftOf = adjacentForAxis XAxis
 above :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
 above = adjustForYAxis $ adjacentForAxis YAxis
 
--- TODO: margin
-
 alignRatioForAxis
     :: Axis
     -> (WidgetDependency a -> Drawable)
@@ -194,3 +193,11 @@ overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY
 
 coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 coloredBackgroud = overlay . flexibleSquare
+
+-- TODO: margin, image, floatingActionButton
+aspectRatio :: Double -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
+aspectRatio goalRatio w xConstraint yConstraint
+    | actualRatio > goalRatio = w (round $ goalRatio * fromIntegral yConstraint) yConstraint
+    | otherwise = w xConstraint (round $ goalRatio * fromIntegral xConstraint)
+  where
+    actualRatio = fromIntegral xConstraint / fromIntegral yConstraint
