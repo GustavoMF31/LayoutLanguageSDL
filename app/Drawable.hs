@@ -20,18 +20,21 @@ module Drawable
     , shiftY
     ) where
 
-import Data.Word (Word8)
 import Data.Foldable (traverse_)
 import Foreign.C.Types (CInt)
 
-import SDL (V2(..), V4(..), (.+^), ($=))
+import SDL (Point(..), V2(..), V4(..), (.+^), ($=))
+import SDL.Primitive (Color)
+import qualified SDL.Primitive as GFX
 import qualified SDL
 
-type Color = V4 Word8
+data DrawingPrimitive
+    = Square Color (SDL.Rectangle CInt)
+    | Ellipse Color (Point V2 CInt) (V2 CInt) -- Position and radii
 
-data DrawingPrimitive = Square Color (SDL.Rectangle CInt) -- | Circle Color {- radius -} CInt
 newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
+
 
 data Axis = XAxis | YAxis
 
@@ -48,17 +51,12 @@ getComponent YAxis (V2 _ y) =  y
 drawableSizeForAxis :: Axis -> Drawable -> CInt
 drawableSizeForAxis axis = getComponent axis . drawableSize
 
-drawableWidth :: Drawable -> CInt
-drawableWidth = drawableSizeForAxis XAxis
-
-drawableHeight :: Drawable -> CInt
-drawableHeight = drawableSizeForAxis YAxis
-
 shiftRect :: V2 CInt -> SDL.Rectangle CInt -> SDL.Rectangle CInt
 shiftRect v2 (SDL.Rectangle pos size) = SDL.Rectangle (pos .+^ v2) size
 
 shiftPrimitive :: V2 CInt -> DrawingPrimitive -> DrawingPrimitive
 shiftPrimitive v2 (Square color rect) = Square color $ shiftRect v2 rect
+shiftPrimitive v2 (Ellipse color pos radii) = Ellipse color (pos .+^ v2) radii
 
 shiftPrimitives :: V2 CInt -> [DrawingPrimitive] -> [DrawingPrimitive]
 shiftPrimitives v2 = map (shiftPrimitive v2)
@@ -110,6 +108,8 @@ drawPrimitive :: SDL.Renderer -> DrawingPrimitive -> IO ()
 drawPrimitive renderer (Square color rectangle) = do
     SDL.rendererDrawColor renderer $= color
     SDL.fillRect renderer (Just rectangle)
+drawPrimitive renderer (Ellipse color (P pos) radii@(V2 xRadius yRadius)) = do
+    GFX.fillEllipse renderer (pos + radii) xRadius yRadius color
 
 draw :: SDL.Renderer -> Drawable -> IO ()
 draw renderer (MkDrawable primitives _) = traverse_ (drawPrimitive renderer) primitives

@@ -10,6 +10,7 @@ module Widget
     , toTheLeftOf
     , above
     , flexibleSquare
+    , flexibleCircle
     , limitSizeX
     , limitSizeY
     , limitSize
@@ -74,6 +75,13 @@ flexibleSquare :: Color -> Widget MaxBounded MaxBounded
 flexibleSquare color width height =
     let size = V2 width height
     in MkDrawable [Square color (SDL.Rectangle (P $ V2 0 0) size)] $ MkLayoutData size
+
+-- Since the circle is flexible, it will often look like an ellipse instead
+flexibleCircle :: Color -> Widget MaxBounded MaxBounded
+flexibleCircle color diameterX diameterY =
+    let diameters = V2 diameterX diameterY
+        radii = div <$> diameters <*> pure 2
+    in MkDrawable [Ellipse color (P $ V2 0 0) radii]  $ MkLayoutData diameters
 
 besideForAxis :: Axis -> Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSized a
 besideForAxis axis f g _ yConstraint  = nextToForAxis axis fDrawable $ shiftInAxis axis (drawableSizeForAxis axis fDrawable) gDrawable
