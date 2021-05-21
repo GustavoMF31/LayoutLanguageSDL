@@ -14,7 +14,7 @@ defaultWindowSize = 40 * V2 9 16
 
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
-render = aspectRatio (1/1) $ flexibleCircle pink
+render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
 -- render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
 -- render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]
 -- render = center $ limitSize 100 200 $ flexibleSquare blue

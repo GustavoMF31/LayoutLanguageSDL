@@ -29,6 +29,12 @@ module Widget
     , overlay
     , coloredBackgroud
     , aspectRatio
+    , marginTop
+    , marginRight
+    , marginDown
+    , marginLeft
+    , marginEach
+    , marginAround
     ) where
 
 import Data.Kind (Type)
@@ -95,12 +101,17 @@ beside :: Widget ConstantSized a -> Widget ConstantSized a -> Widget ConstantSiz
 beside = besideForAxis XAxis
 
 adjustForYAxis
+    :: ((b' -> a' -> c') -> b -> a -> c)
+    ->  (a' -> b' -> c') -> a -> b -> c
+adjustForYAxis f = flip . f . flip
+
+adjustForYAxis2
     :: ((b' -> a' -> c') -> (b'' -> a'' -> c'') -> b -> a -> c)
     ->  (a' -> b' -> c') -> (a'' -> b'' -> c'') -> a -> b -> c
-adjustForYAxis f a b = flip $ f (flip a) (flip b)
+adjustForYAxis2 f a b = flip $ f (flip a) (flip b)
 
 below :: Widget a ConstantSized -> Widget a ConstantSized -> Widget a ConstantSized
-below = adjustForYAxis $ besideForAxis YAxis
+below = adjustForYAxis2 $ besideForAxis YAxis
 
 adjacentForAxis :: Axis -> Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
 adjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis fDrawable $
@@ -116,7 +127,7 @@ toTheLeftOf :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounde
 toTheLeftOf = adjacentForAxis XAxis
 
 above :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
-above = adjustForYAxis $ adjacentForAxis YAxis
+above = adjustForYAxis2 $ adjacentForAxis YAxis
 
 alignRatioForAxis
     :: Axis
@@ -135,6 +146,17 @@ alignRatioY r w = flip $ alignRatioForAxis YAxis (flip w ()) r
 
 empty :: Widget a b
 empty _ _ = emptyDrawable
+
+{-
+spacerX :: CInt -> Widget ConstantSized a
+spacerX width _ _ = MkDrawable [] (V2 0 width)
+
+spacerY :: CInt -> Widget a ConstantSized
+spacerY height _ _ = MkDrawable [] (V2 height 0)
+
+spacer :: CInt -> Widget ConstantSized ConstantSized
+spacer width height _ _ = MkDrawable [] (V2 Widget height)
+-}
 
 row :: [Widget ConstantSized a] -> Widget ConstantSized a
 row = foldr beside empty
@@ -194,10 +216,32 @@ overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY
 coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 coloredBackgroud = overlay . flexibleSquare
 
--- TODO: margin, image, floatingActionButton
+-- TODO: image, floatingActionButton
 aspectRatio :: Double -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 aspectRatio goalRatio w xConstraint yConstraint
     | actualRatio > goalRatio = w (round $ goalRatio * fromIntegral yConstraint) yConstraint
     | otherwise = w xConstraint (round $ goalRatio * fromIntegral xConstraint)
   where
     actualRatio = fromIntegral xConstraint / fromIntegral yConstraint
+
+marginForAxis :: (CInt -> CInt) -> Axis -> CInt -> Widget MaxBounded a -> Widget MaxBounded a
+marginForAxis determineShift axis margin w maxX constraintY = shiftInAxis axis (determineShift margin) $
+    w (subtractPixels maxX margin) constraintY
+
+marginLeft :: CInt -> Widget MaxBounded a -> Widget MaxBounded a
+marginLeft = marginForAxis id XAxis
+
+marginTop :: CInt -> Widget a MaxBounded -> Widget a MaxBounded
+marginTop = adjustForYAxis . marginForAxis id YAxis
+
+marginRight :: CInt -> Widget MaxBounded a -> Widget MaxBounded a
+marginRight = marginForAxis (const 0) XAxis
+
+marginDown :: CInt -> Widget a MaxBounded -> Widget a MaxBounded
+marginDown = adjustForYAxis . marginForAxis (const 0) YAxis
+
+marginEach :: CInt -> CInt -> CInt -> CInt -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
+marginEach top right down left = marginTop top . marginDown down . marginLeft left . marginRight right
+
+marginAround :: CInt -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
+marginAround x = marginEach x x x x
