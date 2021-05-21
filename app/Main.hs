@@ -19,7 +19,9 @@ appBar = limitSizeY 60 $ flexibleSquare lightBlue
 
 -- The main widget is limited by the screen size
 render :: Widget MaxBounded MaxBounded
-render = atop appBar (overlay (flexibleSquare white) fab)
+--render = atop appBar (overlay (flexibleSquare white) fab)
+render = overlay (flexibleSquare white) $
+    spaceEvenlyX $ map (center . limitSize 100 100 . flexibleCircle) [red, blue, pink]
 -- render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
 -- render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
 -- render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]

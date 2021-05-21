@@ -51,6 +51,7 @@ import Drawable
     , Axis(..)
     , Color
     , nextToForAxis
+    , setSizeForAxis
     , overlayDrawable
     , emptyDrawable
     , shiftInAxis
@@ -136,7 +137,7 @@ alignRatioForAxis
     -> Widget MaxBounded a
 alignRatioForAxis axis getDrawable ratio availableSize otherConstraint =
     let drawable = getDrawable otherConstraint
-    in shiftInAxis axis (round $ ratio * fromIntegral (availableSize - drawableSizeForAxis axis drawable)) drawable
+    in setSizeForAxis axis availableSize $ shiftInAxis axis (round $ ratio * fromIntegral (availableSize - drawableSizeForAxis axis drawable)) drawable
 
 alignRatioX :: Double -> Widget ConstantSized a -> Widget MaxBounded a
 alignRatioX r w = alignRatioForAxis XAxis (w ()) r
@@ -202,6 +203,7 @@ safeDiv x y
     | y == 0 = Nothing
     | otherwise = Just $ div x y
 
+-- TODO: Y-axis versions of distributedX and spaceEvenlyX
 distributedX :: [(CInt, Widget MaxBounded a)] -> Widget MaxBounded a
 distributedX widgets availableWidth = case safeDiv availableWidth (sum $ map fst widgets) of
     Nothing -> const emptyDrawable
@@ -216,7 +218,7 @@ overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY
 coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 coloredBackgroud = overlay . flexibleSquare
 
--- TODO: images, writing text, rudimentary shadows
+-- TODO: images, writing text, rudimentary shadows, polygons
 aspectRatio :: Double -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 aspectRatio goalRatio w xConstraint yConstraint
     | actualRatio > goalRatio = w (round $ goalRatio * fromIntegral yConstraint) yConstraint

@@ -12,6 +12,7 @@ module Drawable
     , black
     , white
     , nextToForAxis
+    , setSizeForAxis
     , emptyDrawable
     , drawableSizeForAxis
     , overlayDrawable
@@ -40,6 +41,12 @@ data Axis = XAxis | YAxis
 
 drawableSize :: Drawable -> V2 CInt
 drawableSize (MkDrawable _ (MkLayoutData size)) = size
+
+setSizeForAxis :: Axis -> CInt -> Drawable -> Drawable
+setSizeForAxis XAxis size (MkDrawable visual (MkLayoutData (V2 _ y))) =
+    (MkDrawable visual (MkLayoutData (V2 size y)))
+setSizeForAxis YAxis size (MkDrawable visual (MkLayoutData (V2 x _))) =
+    (MkDrawable visual (MkLayoutData (V2 x size)))
 
 emptyDrawable :: Drawable
 emptyDrawable = MkDrawable [] $ MkLayoutData $ V2 0 0
