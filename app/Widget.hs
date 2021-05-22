@@ -35,14 +35,19 @@ module Widget
     , marginLeft
     , marginEach
     , marginAround
+    , text
     ) where
 
 import Data.Kind (Type)
+import Data.Text (Text)
 
 import Foreign.C.Types (CInt)
+import System.IO.Unsafe
 
 import SDL (V2(..), Point(..))
 import qualified SDL (Rectangle(..))
+import SDL.Font (Font)
+import qualified SDL.Font as Font
 
 import Drawable
     ( Drawable(..)
@@ -203,7 +208,6 @@ safeDiv x y
     | y == 0 = Nothing
     | otherwise = Just $ div x y
 
--- TODO: Y-axis versions of distributedX and spaceEvenlyX
 distributedX :: [(CInt, Widget MaxBounded a)] -> Widget MaxBounded a
 distributedX widgets availableWidth = case safeDiv availableWidth (sum $ map fst widgets) of
     Nothing -> const emptyDrawable
@@ -218,7 +222,6 @@ overlay f g constraintX constraintY = overlayDrawable (f constraintX constraintY
 coloredBackgroud :: Color -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 coloredBackgroud = overlay . flexibleSquare
 
--- TODO: images, writing text, rudimentary shadows, polygons
 aspectRatio :: Double -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 aspectRatio goalRatio w xConstraint yConstraint
     | actualRatio > goalRatio = w (round $ goalRatio * fromIntegral yConstraint) yConstraint
@@ -247,3 +250,14 @@ marginEach top right down left = marginTop top . marginDown down . marginLeft le
 
 marginAround :: CInt -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 marginAround x = marginEach x x x x
+
+pairToV2 :: (a, a) -> V2 a
+pairToV2 (x, y) = V2 x y
+
+-- Getting the size of text does not perform actual side effects, so, unsafePerformIO should not cause trouble
+-- Reworking the system to call this function in IO would be a significant pain
+textSizeForFont :: Font -> Text -> V2 CInt
+textSizeForFont font t = fmap fromIntegral $ pairToV2 $ System.IO.Unsafe.unsafePerformIO $ Font.size font t
+
+text :: Font -> Text -> Widget ConstantSized ConstantSized
+text font t () () = MkDrawable [DrawText font t (P $ V2 0 0)] (MkLayoutData $ textSizeForFont font t)

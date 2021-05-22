@@ -22,20 +22,23 @@ module Drawable
     ) where
 
 import Data.Foldable (traverse_)
+import Data.Text (Text)
 import Foreign.C.Types (CInt)
 
-import SDL (Point(..), V2(..), V4(..), (.+^), ($=))
 import SDL.Primitive (Color)
 import qualified SDL.Primitive as GFX
+import SDL.Font (Font)
+import qualified SDL.Font as Font
+import SDL (Point(..), V2(..), V4(..), (.+^), ($=))
 import qualified SDL
 
 data DrawingPrimitive
     = Square Color (SDL.Rectangle CInt)
     | Ellipse Color (Point V2 CInt) (V2 CInt) -- Position and radii
+    | DrawText Font Text (Point V2 CInt)
 
 newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
-
 
 data Axis = XAxis | YAxis
 
@@ -64,6 +67,7 @@ shiftRect v2 (SDL.Rectangle pos size) = SDL.Rectangle (pos .+^ v2) size
 shiftPrimitive :: V2 CInt -> DrawingPrimitive -> DrawingPrimitive
 shiftPrimitive v2 (Square color rect) = Square color $ shiftRect v2 rect
 shiftPrimitive v2 (Ellipse color pos radii) = Ellipse color (pos .+^ v2) radii
+shiftPrimitive v2 (DrawText font text pos) = DrawText font text (pos .+^ v2)
 
 shiftPrimitives :: V2 CInt -> [DrawingPrimitive] -> [DrawingPrimitive]
 shiftPrimitives v2 = map (shiftPrimitive v2)
@@ -122,6 +126,11 @@ drawPrimitive renderer (Ellipse color (P pos) radii@(V2 xRadius yRadius)) = do
     -- a bit smoother
     GFX.smoothEllipse renderer (pos + radii) (xRadius - 1) (yRadius - 1) color
     GFX.smoothEllipse renderer (pos + radii) xRadius yRadius color
+drawPrimitive renderer (DrawText font text pos) = do
+    surface <- Font.blended font black text
+    (width, height) <- Font.size font text
+    texture <- SDL.createTextureFromSurface renderer surface
+    SDL.copy renderer texture Nothing $ Just $ SDL.Rectangle pos (fromIntegral <$> V2 width height)
 
 draw :: SDL.Renderer -> Drawable -> IO ()
 draw renderer (MkDrawable primitives _) = traverse_ (drawPrimitive renderer) primitives
