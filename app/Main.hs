@@ -6,6 +6,7 @@ import qualified SDL
 import SDL (V2(..), get, ($=))
 import SDL.Font (Font)
 import qualified SDL.Font as Font
+import qualified SDL.Image as Image
 
 import Widget --(Widget, WidgetSizeDependency(..), flexibleSquare, row, limit, alignLeft, alignTop)
 import Drawable
@@ -23,8 +24,9 @@ appBar = limitSizeY 60 $ flexibleSquare lightBlue
 -- TODO: images, writing text, rudimentary shadows, card, polygons
 
 -- The main widget is limited by the screen size
-render :: Font -> Widget MaxBounded MaxBounded
-render font = coloredBackgroud white $ alignRight $ alignBottom $ text font "Hello world!"
+render :: Font -> SDL.Texture -> Widget MaxBounded MaxBounded
+render font addIcon = coloredBackgroud white $ center $ image 100 100 addIcon
+-- render font addIcon = coloredBackgroud white $ alignRight $ alignBottom $ text font "Hello world!"
 -- render = atop appBar (overlay (flexibleSquare white) fab)
 -- render = overlay (flexibleSquare white) $
 --     spaceEvenlyX $ map (center . limitSize 100 100 . flexibleCircle) [red, blue, pink]
@@ -47,9 +49,9 @@ render = coloredBackgroud white $ centerY $ limitSizeY 100 $ distributedX
 shouldQuit :: [SDL.Event] -> Bool
 shouldQuit = any $ (SDL.QuitEvent ==) . SDL.eventPayload
 
-mainLoop :: Font -> SDL.Window -> SDL.Renderer -> IO ()
-mainLoop font window renderer = do
-    let loop = mainLoop font window renderer
+mainLoop :: Font -> SDL.Texture -> SDL.Window -> SDL.Renderer -> IO ()
+mainLoop font addIcon window renderer = do
+    let loop = mainLoop font addIcon window renderer
 
     SDL.rendererDrawColor renderer $= black
     SDL.clear renderer
@@ -57,7 +59,7 @@ mainLoop font window renderer = do
     events <- SDL.pollEvents
     (V2 screenWidth screenHeight) <- get $ SDL.windowSize window
 
-    draw renderer $ render font screenWidth screenHeight
+    draw renderer $ render font addIcon screenWidth screenHeight
     SDL.present renderer
 
     -- Quit if necessary
@@ -72,9 +74,12 @@ main = do
 
     window <- SDL.createWindow "App" SDL.defaultWindow { SDL.windowResizable = True, SDL.windowInitialSize = defaultWindowSize }
     renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer }
-    roboto <- Font.load "fonts/Roboto/Roboto-Regular.ttf" 24
 
-    mainLoop roboto window renderer
+    -- Those calls to load can crash if the file is not found
+    roboto <- Font.load "fonts/Roboto/Roboto-Regular.ttf" 24
+    addIcon <- Image.loadTexture renderer "images/add_black.png"
+
+    mainLoop roboto addIcon window renderer
 
     Font.quit
     SDL.quit

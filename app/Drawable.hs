@@ -36,6 +36,7 @@ data DrawingPrimitive
     = Square Color (SDL.Rectangle CInt)
     | Ellipse Color (Point V2 CInt) (V2 CInt) -- Position and radii
     | DrawText Font Text (Point V2 CInt)
+    | DrawTexture SDL.Texture (SDL.Rectangle CInt)
 
 newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
 data Drawable = MkDrawable [DrawingPrimitive] LayoutData
@@ -68,6 +69,7 @@ shiftPrimitive :: V2 CInt -> DrawingPrimitive -> DrawingPrimitive
 shiftPrimitive v2 (Square color rect) = Square color $ shiftRect v2 rect
 shiftPrimitive v2 (Ellipse color pos radii) = Ellipse color (pos .+^ v2) radii
 shiftPrimitive v2 (DrawText font text pos) = DrawText font text (pos .+^ v2)
+shiftPrimitive v2 (DrawTexture texture rect) = DrawTexture texture $ shiftRect v2 rect
 
 shiftPrimitives :: V2 CInt -> [DrawingPrimitive] -> [DrawingPrimitive]
 shiftPrimitives v2 = map (shiftPrimitive v2)
@@ -131,6 +133,8 @@ drawPrimitive renderer (DrawText font text pos) = do
     (width, height) <- Font.size font text
     texture <- SDL.createTextureFromSurface renderer surface
     SDL.copy renderer texture Nothing $ Just $ SDL.Rectangle pos (fromIntegral <$> V2 width height)
+drawPrimitive renderer (DrawTexture texture rect) = do
+    SDL.copy renderer texture Nothing $ Just $ rect
 
 draw :: SDL.Renderer -> Drawable -> IO ()
 draw renderer (MkDrawable primitives _) = traverse_ (drawPrimitive renderer) primitives

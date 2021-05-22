@@ -36,6 +36,8 @@ module Widget
     , marginEach
     , marginAround
     , text
+    , flexibleImage
+    , image
     ) where
 
 import Data.Kind (Type)
@@ -45,7 +47,7 @@ import Foreign.C.Types (CInt)
 import System.IO.Unsafe
 
 import SDL (V2(..), Point(..))
-import qualified SDL (Rectangle(..))
+import qualified SDL (Rectangle(..), Texture)
 import SDL.Font (Font)
 import qualified SDL.Font as Font
 
@@ -261,3 +263,11 @@ textSizeForFont font t = fmap fromIntegral $ pairToV2 $ System.IO.Unsafe.unsafeP
 
 text :: Font -> Text -> Widget ConstantSized ConstantSized
 text font t () () = MkDrawable [DrawText font t (P $ V2 0 0)] (MkLayoutData $ textSizeForFont font t)
+
+flexibleImage :: SDL.Texture -> Widget MaxBounded MaxBounded
+flexibleImage texture xSize ySize =
+    let size = V2 xSize ySize
+    in MkDrawable [DrawTexture texture (SDL.Rectangle (P $ V2 0 0) size)] (MkLayoutData size)
+
+image :: CInt -> CInt -> SDL.Texture -> Widget ConstantSized ConstantSized
+image x y = limitSize x y . flexibleImage
