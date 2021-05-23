@@ -4,12 +4,12 @@ module Widget
     ( WidgetSizeDependency(..)
     , Widget
     , empty
-    , beside
     , row
-    , below
     , column
-    , toTheLeftOf
+    , before
+    , after
     , atop
+    , above
     , flexibleSquare
     , flexibleCircle
     , limitSizeX
@@ -127,8 +127,8 @@ adjustForYAxis2
     ->  (a' -> b' -> c') -> (a'' -> b'' -> c'') -> a -> b -> c
 adjustForYAxis2 f a b = flip $ f (flip a) (flip b)
 
-below :: Widget a ConstantSized -> Widget a ConstantSized -> Widget a ConstantSized
-below = adjustForYAxis2 $ besideForAxis YAxis
+vertically :: Widget a ConstantSized -> Widget a ConstantSized -> Widget a ConstantSized
+vertically = adjustForYAxis2 $ besideForAxis YAxis
 
 adjacentForAxis :: Axis -> Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
 adjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis fDrawable $
@@ -140,8 +140,32 @@ adjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis fDrawable 
     fSize :: CInt
     fSize = drawableSizeForAxis axis fDrawable
 
-toTheLeftOf :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
-toTheLeftOf = adjacentForAxis XAxis
+reverseAdjacentForAxis :: Axis -> Widget MaxBounded a -> Widget ConstantSized a -> Widget MaxBounded a
+reverseAdjacentForAxis axis f g xConstraint yConstraint = nextToForAxis axis
+    fDrawable
+    (shiftInAxis axis fSize gDrawable)
+  where
+    gSize :: CInt
+    gSize = drawableSizeForAxis axis $ gDrawable
+
+    fSize :: CInt
+    fSize = drawableSizeForAxis axis $ fDrawable
+
+    gDrawable :: Drawable
+    gDrawable = g () yConstraint
+
+    fDrawable :: Drawable
+    fDrawable = f (subtractPixels xConstraint gSize) yConstraint
+
+after :: Widget MaxBounded a -> Widget ConstantSized a -> Widget MaxBounded a
+after = reverseAdjacentForAxis XAxis
+
+-- This name only makes sense infix
+before :: Widget ConstantSized a -> Widget MaxBounded a -> Widget MaxBounded a
+before = adjacentForAxis XAxis
+
+above :: Widget a MaxBounded -> Widget a ConstantSized -> Widget a MaxBounded
+above = adjustForYAxis2 $ reverseAdjacentForAxis YAxis
 
 atop :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a MaxBounded
 atop = adjustForYAxis2 $ adjacentForAxis YAxis
@@ -179,7 +203,7 @@ row :: [Widget ConstantSized a] -> Widget ConstantSized a
 row = foldr beside empty
 
 column :: [Widget a ConstantSized] -> Widget a ConstantSized
-column = foldr below empty
+column = foldr vertically empty
 
 limitSizeX :: CInt -> Widget MaxBounded a -> Widget ConstantSized a
 limitSizeX size f _ = f size

@@ -37,21 +37,41 @@ flutterPage regularFont smallFont zeroFont icon = atop (appBar regularFont) $ st
 -- TODO: Y-axis versions of distributedX and spaceEvenlyX
 -- TODO: rudimentary shadows, card, polygons
 
+flexibleMiddleX :: Widget ConstantSized a -> Widget MaxBounded a -> Widget ConstantSized a -> Widget MaxBounded a
+flexibleMiddleX a b c = after (a `before` b) c
+
+flexibleMiddleY :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a ConstantSized -> Widget a MaxBounded
+flexibleMiddleY a b c = atop a (b `above` c)
+
+square :: CInt -> CInt -> Color -> Widget ConstantSized ConstantSized
+square x y = limitSize x y . flexibleSquare
+
+squareMosaic :: Widget MaxBounded MaxBounded
+squareMosaic = flexibleMiddleY
+    (flexibleMiddleX (cornerSquare pink      ) (horizontalRectangle blue) (cornerSquare white    ))
+    (flexibleMiddleX (verticalRectangle black) (flexibleSquare pink     ) (verticalRectangle blue))
+    (flexibleMiddleX (cornerSquare darkGray  ) (horizontalRectangle red ) (cornerSquare lightBlue))
+  where
+    size = 100
+    cornerSquare = square size size
+    horizontalRectangle = limitSizeY size . flexibleSquare
+    verticalRectangle = limitSizeX size . flexibleSquare
+
 -- The main widget is limited by the screen size
 render :: Font -> Font -> Font -> SDL.Texture -> Widget MaxBounded MaxBounded
-render = flutterPage
--- render font addIcon = coloredBackgroud white $ alignRight $ alignBottom $ text font "Hello world!"
--- render = atop appBar (overlay (flexibleSquare white) fab)
--- render = overlay (flexibleSquare white) $
---     spaceEvenlyX $ map (center . limitSize 100 100 . flexibleCircle) [red, blue, pink]
+render _ _ _ _ = squareMosaic
 
--- render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
--- render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
--- render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]
--- render = center $ limitSize 100 200 $ flexibleSquare blue
--- render = centerY $ flip nextTo (limitSizeY 100 $ flexibleSquare pink) $ limitSizeX 150 $ nextTo (limitSize 100 100 (flexibleSquare blue)) (limitSizeY 100 $ flexibleSquare red)
---
 {-
+render = flutterPage
+render font addIcon = coloredBackgroud white $ alignRight $ alignBottom $ text font "Hello world!"
+render = atop appBar (overlay (flexibleSquare white) fab)
+render = overlay (flexibleSquare white) $
+    spaceEvenlyX $ map (center . limitSize 100 100 . flexibleCircle) [red, blue, pink]
+render = marginAround 100 $ aspectRatio (1/1) $ flexibleCircle pink
+render = alignRight $ row $ map (limitSizeX 100 . flexibleSquare) [pink, blue, red]
+render = centerX $ row $ [limitSizeX 100 $ flexibleSquare pink]
+render = center $ limitSize 100 200 $ flexibleSquare blue
+render = centerY $ flip nextTo (limitSizeY 100 $ flexibleSquare pink) $ limitSizeX 150 $ nextTo (limitSize 100 100 (flexibleSquare blue)) (limitSizeY 100 $ flexibleSquare red)
 render = coloredBackgroud white $ centerY $ limitSizeY 100 $ distributedX
     [ (1, flexibleSquare blue)
     , (2, flexibleSquare pink)
