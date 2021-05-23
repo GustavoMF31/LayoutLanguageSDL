@@ -11,6 +11,7 @@ module Widget
     , atop
     , above
     , flexibleSquare
+    , square
     , flexibleCircle
     , limitSizeX
     , limitSizeY
@@ -99,6 +100,9 @@ flexibleSquare :: Color -> Widget Flexible Flexible
 flexibleSquare color width height =
     let size = V2 width height
     in MkDrawable [Square color (SDL.Rectangle (P $ V2 0 0) size)] $ MkLayoutData size
+
+square :: CInt -> CInt -> Color -> Widget Constant Constant
+square x y = limitSize x y . flexibleSquare
 
 -- Since the circle is flexible, it will often look like an ellipse instead
 flexibleCircle :: Color -> Widget Flexible Flexible
@@ -265,7 +269,8 @@ aspectRatio goalRatio w xConstraint yConstraint
     actualRatio = fromIntegral xConstraint / fromIntegral yConstraint
 
 marginForAxis :: (CInt -> CInt) -> Axis -> CInt -> Widget Flexible a -> Widget Flexible a
-marginForAxis determineShift axis margin w maxX constraintY = shiftInAxis axis (determineShift margin) $
+marginForAxis determineShift axis margin w maxX constraintY = setSizeForAxis axis maxX $
+    shiftInAxis axis (determineShift margin) $
     w (subtractPixels maxX margin) constraintY
 
 marginLeft :: CInt -> Widget Flexible a -> Widget Flexible a

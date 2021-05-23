@@ -43,19 +43,18 @@ flexibleMiddleX a b c = after (a `before` b) c
 flexibleMiddleY :: Widget a Constant -> Widget a Flexible -> Widget a Constant -> Widget a Flexible
 flexibleMiddleY a b c = atop a (b `above` c)
 
-square :: CInt -> CInt -> Color -> Widget Constant Constant
-square x y = limitSize x y . flexibleSquare
-
 squareMosaic :: Widget Flexible Flexible
-squareMosaic = flexibleMiddleY
+squareMosaic = marginAround margin $ flexibleMiddleY
     (flexibleMiddleX (cornerSquare pink      ) (horizontalRectangle blue) (cornerSquare white    ))
-    (flexibleMiddleX (verticalRectangle black) (flexibleSquare pink     ) (verticalRectangle blue))
+    (flexibleMiddleX (verticalRectangle white) (middleSquare pink       ) (verticalRectangle blue))
     (flexibleMiddleX (cornerSquare darkGray  ) (horizontalRectangle red ) (cornerSquare lightBlue))
   where
     size = 100
-    cornerSquare = square size size
-    horizontalRectangle = limitSizeY size . flexibleSquare
-    verticalRectangle = limitSizeX size . flexibleSquare
+    margin = 10
+    middleSquare = marginAround margin . flexibleSquare
+    cornerSquare = limitSize size size . marginAround margin . flexibleSquare
+    horizontalRectangle = limitSizeY size . marginAround margin . flexibleSquare
+    verticalRectangle = limitSizeX size . marginAround margin . flexibleSquare
 
 -- The main widget is limited by the screen size
 render :: Font -> Font -> Font -> SDL.Texture -> Widget Flexible Flexible
