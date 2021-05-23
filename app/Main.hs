@@ -16,15 +16,15 @@ import Drawable
 defaultWindowSize :: V2 CInt
 defaultWindowSize = 40 * V2 9 16
 
-fab :: SDL.Texture -> Widget ConstantSized ConstantSized
+fab :: SDL.Texture -> Widget Constant Constant
 fab icon = beneath (constMarginAround 15 $ image 25 25 icon) $ flexibleCircle lightBlue
 
-appBar :: Font -> Widget MaxBounded ConstantSized
+appBar :: Font -> Widget Flexible Constant
 appBar font = matchHeightBelow
     (alignLeft $ constMarginAround 15 $ text font white "Flutter Demo Home Page")
     (flexibleSquare lightBlue)
 
-flutterPage :: Font -> Font -> Font -> SDL.Texture -> Widget MaxBounded MaxBounded
+flutterPage :: Font -> Font -> Font -> SDL.Texture -> Widget Flexible Flexible
 flutterPage regularFont smallFont zeroFont icon = atop (appBar regularFont) $ stack $
     [ flexibleSquare white -- White background
     , centerY $ column $ map centerX -- Text content in the center
@@ -37,16 +37,16 @@ flutterPage regularFont smallFont zeroFont icon = atop (appBar regularFont) $ st
 -- TODO: Y-axis versions of distributedX and spaceEvenlyX
 -- TODO: rudimentary shadows, card, polygons
 
-flexibleMiddleX :: Widget ConstantSized a -> Widget MaxBounded a -> Widget ConstantSized a -> Widget MaxBounded a
+flexibleMiddleX :: Widget Constant a -> Widget Flexible a -> Widget Constant a -> Widget Flexible a
 flexibleMiddleX a b c = after (a `before` b) c
 
-flexibleMiddleY :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a ConstantSized -> Widget a MaxBounded
+flexibleMiddleY :: Widget a Constant -> Widget a Flexible -> Widget a Constant -> Widget a Flexible
 flexibleMiddleY a b c = atop a (b `above` c)
 
-square :: CInt -> CInt -> Color -> Widget ConstantSized ConstantSized
+square :: CInt -> CInt -> Color -> Widget Constant Constant
 square x y = limitSize x y . flexibleSquare
 
-squareMosaic :: Widget MaxBounded MaxBounded
+squareMosaic :: Widget Flexible Flexible
 squareMosaic = flexibleMiddleY
     (flexibleMiddleX (cornerSquare pink      ) (horizontalRectangle blue) (cornerSquare white    ))
     (flexibleMiddleX (verticalRectangle black) (flexibleSquare pink     ) (verticalRectangle blue))
@@ -58,7 +58,7 @@ squareMosaic = flexibleMiddleY
     verticalRectangle = limitSizeX size . flexibleSquare
 
 -- The main widget is limited by the screen size
-render :: Font -> Font -> Font -> SDL.Texture -> Widget MaxBounded MaxBounded
+render :: Font -> Font -> Font -> SDL.Texture -> Widget Flexible Flexible
 render _ _ _ _ = squareMosaic
 
 {-
