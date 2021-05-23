@@ -79,13 +79,11 @@ import Drawable
 data WidgetSizeDependency
     = ConstantSized
     | MaxBounded
-    | MinMaxBounded
 
 -- type WidgetDependency :: WidgetSizeDependency -> Type
 type family WidgetDependency (x :: WidgetSizeDependency) = (r :: Type) | r -> x where
     WidgetDependency ConstantSized = ()
     WidgetDependency MaxBounded = CInt
-    WidgetDependency MinMaxBounded = (CInt, CInt)
 
 -- Widget :: WidgetSizeDependency -> WidgetSizeDependency -> Type
 type Widget a b = WidgetDependency a -> WidgetDependency b -> Drawable
