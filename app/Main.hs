@@ -7,6 +7,8 @@ import SDL (V2(..), get, ($=))
 import SDL.Font (Font)
 import qualified SDL.Font as Font
 import qualified SDL.Image as Image
+import SDL.Framerate (Manager)
+import qualified SDL.Framerate as Framerate
 
 import Widget --(Widget, WidgetSizeDependency(..), flexibleSquare, row, limit, alignLeft, alignTop)
 import Drawable
@@ -14,18 +16,30 @@ import Drawable
 defaultWindowSize :: V2 CInt
 defaultWindowSize = 40 * V2 9 16
 
-fab :: Widget MaxBounded MaxBounded
-fab = marginAround 30 $ alignBottom $ alignRight $ limitSize 70 70 $ flexibleCircle lightBlue
+fab :: SDL.Texture -> Widget ConstantSized ConstantSized
+fab icon = beneath (constMarginAround 15 $ image 25 25 icon) $ flexibleCircle lightBlue
 
-appBar :: Widget MaxBounded ConstantSized
-appBar = limitSizeY 60 $ flexibleSquare lightBlue
+appBar :: Font -> Widget MaxBounded ConstantSized
+appBar font = matchHeightBelow
+    (alignLeft $ constMarginAround 15 $ text font white "Flutter Demo Home Page")
+    (flexibleSquare lightBlue)
+
+flutterPage :: Font -> Font -> Font -> SDL.Texture -> Widget MaxBounded MaxBounded
+flutterPage regularFont smallFont zeroFont icon = atop (appBar regularFont) $ stack $
+    [ flexibleSquare white -- White background
+    , centerY $ column $ map centerX -- Text content in the center
+        [ text smallFont darkGray "You have pushed the button this many times:"
+        , text zeroFont darkGray "0"
+        ]
+    , (marginAround 15 $ alignRight $ alignBottom $ fab icon) -- FAB
+    ]
 
 -- TODO: Y-axis versions of distributedX and spaceEvenlyX
--- TODO: images, writing text, rudimentary shadows, card, polygons
+-- TODO: rudimentary shadows, card, polygons
 
 -- The main widget is limited by the screen size
-render :: Font -> SDL.Texture -> Widget MaxBounded MaxBounded
-render font addIcon = coloredBackgroud white $ center $ image 100 100 addIcon
+render :: Font -> Font -> Font -> SDL.Texture -> Widget MaxBounded MaxBounded
+render = flutterPage
 -- render font addIcon = coloredBackgroud white $ alignRight $ alignBottom $ text font "Hello world!"
 -- render = atop appBar (overlay (flexibleSquare white) fab)
 -- render = overlay (flexibleSquare white) $
@@ -49,9 +63,9 @@ render = coloredBackgroud white $ centerY $ limitSizeY 100 $ distributedX
 shouldQuit :: [SDL.Event] -> Bool
 shouldQuit = any $ (SDL.QuitEvent ==) . SDL.eventPayload
 
-mainLoop :: Font -> SDL.Texture -> SDL.Window -> SDL.Renderer -> IO ()
-mainLoop font addIcon window renderer = do
-    let loop = mainLoop font addIcon window renderer
+mainLoop :: Font -> Font -> Font -> SDL.Texture -> SDL.Window -> SDL.Renderer -> Manager -> IO ()
+mainLoop regularFont smallFont zeroFont addIcon window renderer manager = do
+    let loop = Framerate.delay_ manager >> mainLoop regularFont smallFont zeroFont addIcon window renderer manager
 
     SDL.rendererDrawColor renderer $= black
     SDL.clear renderer
@@ -59,7 +73,7 @@ mainLoop font addIcon window renderer = do
     events <- SDL.pollEvents
     (V2 screenWidth screenHeight) <- get $ SDL.windowSize window
 
-    draw renderer $ render font addIcon screenWidth screenHeight
+    draw renderer $ render regularFont smallFont zeroFont addIcon screenWidth screenHeight
     SDL.present renderer
 
     -- Quit if necessary
@@ -76,10 +90,12 @@ main = do
     renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer }
 
     -- Those calls to load can crash if the file is not found
-    roboto <- Font.load "fonts/Roboto/Roboto-Regular.ttf" 24
-    addIcon <- Image.loadTexture renderer "images/add_black.png"
+    robotoMedium <- Font.load "fonts/Roboto/Roboto-Medium.ttf" 20
+    robotoSmall <- Font.load "fonts/Roboto/Roboto-Regular.ttf" 14
+    robotoZero <- Font.load "fonts/Roboto/Roboto-Medium.ttf" 34
+    addIcon <- Image.loadTexture renderer "images/add_white.png"
 
-    mainLoop roboto addIcon window renderer
+    Framerate.with 60 $ mainLoop robotoMedium robotoSmall robotoZero addIcon window renderer
 
     Font.quit
     SDL.quit

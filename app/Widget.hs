@@ -3,6 +3,7 @@
 module Widget
     ( WidgetSizeDependency(..)
     , Widget
+    , empty
     , beside
     , row
     , below
@@ -35,9 +36,18 @@ module Widget
     , marginLeft
     , marginEach
     , marginAround
+    , constMarginTop
+    , constMarginRight
+    , constMarginDown
+    , constMarginLeft
+    , constMarginEach
+    , constMarginAround
+    , matchHeightBelow
+    , stack
     , text
     , flexibleImage
     , image
+    , beneath
     ) where
 
 import Data.Kind (Type)
@@ -63,6 +73,7 @@ import Drawable
     , emptyDrawable
     , shiftInAxis
     , drawableSizeForAxis
+    , updateLayoutSizeForAxis
     )
 
 data WidgetSizeDependency
@@ -253,6 +264,46 @@ marginEach top right down left = marginTop top . marginDown down . marginLeft le
 marginAround :: CInt -> Widget MaxBounded MaxBounded -> Widget MaxBounded MaxBounded
 marginAround x = marginEach x x x x
 
+constMarginForAxis :: Axis -> (CInt -> CInt) -> CInt -> Widget ConstantSized a -> Widget ConstantSized a
+constMarginForAxis axis determineShift marginSize w () yConstraint = shiftInAxis axis (determineShift marginSize) $
+    updateLayoutSizeForAxis axis (+ marginSize) (w () yConstraint)
+
+constMarginLeft :: CInt -> Widget ConstantSized a -> Widget ConstantSized a
+constMarginLeft = constMarginForAxis XAxis id
+
+constMarginRight :: CInt -> Widget ConstantSized a -> Widget ConstantSized a
+constMarginRight = constMarginForAxis XAxis (const 0)
+
+constMarginTop :: CInt -> Widget a ConstantSized -> Widget a ConstantSized
+constMarginTop = adjustForYAxis . constMarginForAxis YAxis id
+
+constMarginDown :: CInt -> Widget a ConstantSized -> Widget a ConstantSized
+constMarginDown = adjustForYAxis . constMarginForAxis YAxis (const 0)
+
+constMarginEach :: CInt -> CInt -> CInt -> CInt -> Widget ConstantSized ConstantSized -> Widget ConstantSized ConstantSized
+constMarginEach top right down left =
+      constMarginTop top . constMarginRight right
+    . constMarginDown down . constMarginLeft left
+
+constMarginAround :: CInt -> Widget ConstantSized ConstantSized -> Widget ConstantSized ConstantSized
+constMarginAround x = constMarginEach x x x x
+
+beneath :: Widget ConstantSized ConstantSized -> Widget MaxBounded MaxBounded -> Widget ConstantSized ConstantSized
+beneath constant flexible = overlay (limitSize (drawableSizeForAxis XAxis drawable) (drawableSizeForAxis YAxis drawable) flexible) constant
+  where
+    drawable :: Drawable
+    drawable = constant () ()
+
+matchHeightBelow :: Widget a ConstantSized -> Widget a MaxBounded -> Widget a ConstantSized
+matchHeightBelow constant flexible xConstraint () = overlayDrawable
+    ((\x -> x xConstraint ()) $ limitSizeY (drawableSizeForAxis YAxis drawable) $ flexible)
+    drawable
+  where
+    drawable = constant xConstraint ()
+
+stack :: [Widget a b] -> Widget a b
+stack = foldr overlay empty
+
 pairToV2 :: (a, a) -> V2 a
 pairToV2 (x, y) = V2 x y
 
@@ -261,8 +312,8 @@ pairToV2 (x, y) = V2 x y
 textSizeForFont :: Font -> Text -> V2 CInt
 textSizeForFont font t = fmap fromIntegral $ pairToV2 $ System.IO.Unsafe.unsafePerformIO $ Font.size font t
 
-text :: Font -> Text -> Widget ConstantSized ConstantSized
-text font t () () = MkDrawable [DrawText font t (P $ V2 0 0)] (MkLayoutData $ textSizeForFont font t)
+text :: Font -> Color -> Text -> Widget ConstantSized ConstantSized
+text font color t () () = MkDrawable [DrawText font color t (P $ V2 0 0)] (MkLayoutData $ textSizeForFont font t)
 
 flexibleImage :: SDL.Texture -> Widget MaxBounded MaxBounded
 flexibleImage texture xSize ySize =

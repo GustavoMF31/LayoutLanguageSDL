@@ -11,6 +11,7 @@ module Drawable
     , red
     , black
     , white
+    , darkGray
     , nextToForAxis
     , setSizeForAxis
     , emptyDrawable
@@ -19,6 +20,7 @@ module Drawable
     , shiftInAxis
     , shiftX
     , shiftY
+    , updateLayoutSizeForAxis
     ) where
 
 import Data.Foldable (traverse_)
@@ -35,7 +37,7 @@ import qualified SDL
 data DrawingPrimitive
     = Square Color (SDL.Rectangle CInt)
     | Ellipse Color (Point V2 CInt) (V2 CInt) -- Position and radii
-    | DrawText Font Text (Point V2 CInt)
+    | DrawText Font Color Text (Point V2 CInt)
     | DrawTexture SDL.Texture (SDL.Rectangle CInt)
 
 newtype LayoutData = MkLayoutData (V2 CInt) -- The widget's size
@@ -47,10 +49,13 @@ drawableSize :: Drawable -> V2 CInt
 drawableSize (MkDrawable _ (MkLayoutData size)) = size
 
 setSizeForAxis :: Axis -> CInt -> Drawable -> Drawable
-setSizeForAxis XAxis size (MkDrawable visual (MkLayoutData (V2 _ y))) =
-    (MkDrawable visual (MkLayoutData (V2 size y)))
-setSizeForAxis YAxis size (MkDrawable visual (MkLayoutData (V2 x _))) =
-    (MkDrawable visual (MkLayoutData (V2 x size)))
+setSizeForAxis axis size = updateLayoutSizeForAxis axis (const size)
+
+updateLayoutSizeForAxis :: Axis -> (CInt -> CInt) -> Drawable -> Drawable
+updateLayoutSizeForAxis XAxis f (MkDrawable visual (MkLayoutData (V2 x y))) =
+    (MkDrawable visual (MkLayoutData (V2 (f x) y)))
+updateLayoutSizeForAxis YAxis f (MkDrawable visual (MkLayoutData (V2 x y))) =
+    (MkDrawable visual (MkLayoutData (V2 x (f y))))
 
 emptyDrawable :: Drawable
 emptyDrawable = MkDrawable [] $ MkLayoutData $ V2 0 0
@@ -68,7 +73,7 @@ shiftRect v2 (SDL.Rectangle pos size) = SDL.Rectangle (pos .+^ v2) size
 shiftPrimitive :: V2 CInt -> DrawingPrimitive -> DrawingPrimitive
 shiftPrimitive v2 (Square color rect) = Square color $ shiftRect v2 rect
 shiftPrimitive v2 (Ellipse color pos radii) = Ellipse color (pos .+^ v2) radii
-shiftPrimitive v2 (DrawText font text pos) = DrawText font text (pos .+^ v2)
+shiftPrimitive v2 (DrawText font color text pos) = DrawText font color text (pos .+^ v2)
 shiftPrimitive v2 (DrawTexture texture rect) = DrawTexture texture $ shiftRect v2 rect
 
 shiftPrimitives :: V2 CInt -> [DrawingPrimitive] -> [DrawingPrimitive]
@@ -109,13 +114,14 @@ combineDrawable combineSizes
     (MkDrawable primitivesAbove (MkLayoutData size')) =
       MkDrawable (primitivesBelow ++ primitivesAbove) (MkLayoutData $ combineSizes <*> size <*> size')
 
-pink, blue, lightBlue, red, black, white :: Color
+pink, blue, lightBlue, red, black, white, darkGray :: Color
 pink      = V4 255 0   255 255
 blue      = V4 0   0   255 255
 lightBlue = V4 33  150 243 255 -- The default blue used by Flutter
 red       = V4 255 0   0   255
 black     = V4 0   0   0   255
 white     = V4 255 255 255 255
+darkGray  = V4 100 100 100 255
 
 drawPrimitive :: SDL.Renderer -> DrawingPrimitive -> IO ()
 drawPrimitive renderer (Square color rectangle) = do
@@ -128,8 +134,8 @@ drawPrimitive renderer (Ellipse color (P pos) radii@(V2 xRadius yRadius)) = do
     -- a bit smoother
     GFX.smoothEllipse renderer (pos + radii) (xRadius - 1) (yRadius - 1) color
     GFX.smoothEllipse renderer (pos + radii) xRadius yRadius color
-drawPrimitive renderer (DrawText font text pos) = do
-    surface <- Font.blended font black text
+drawPrimitive renderer (DrawText font color text pos) = do
+    surface <- Font.blended font color text
     (width, height) <- Font.size font text
     texture <- SDL.createTextureFromSurface renderer surface
     SDL.copy renderer texture Nothing $ Just $ SDL.Rectangle pos (fromIntegral <$> V2 width height)
