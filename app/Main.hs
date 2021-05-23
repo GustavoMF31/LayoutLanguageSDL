@@ -3,6 +3,7 @@
 import Foreign.C.Types (CInt)
 
 import qualified SDL
+import qualified SDL.Video.Renderer as Renderer
 import SDL (V2(..), get, ($=))
 import SDL.Font (Font)
 import qualified SDL.Font as Font
@@ -104,6 +105,7 @@ main :: IO ()
 main = do
     SDL.initializeAll
     Font.initialize
+    -- Explicit initialization of SDL.Image is optional
 
     window <- SDL.createWindow "App" SDL.defaultWindow { SDL.windowResizable = True, SDL.windowInitialSize = defaultWindowSize }
     renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer { SDL.rendererType = SDL.AcceleratedVSyncRenderer }
@@ -116,5 +118,13 @@ main = do
 
     Framerate.with 60 $ mainLoop robotoMedium robotoSmall robotoZero addIcon window renderer
 
+    Renderer.destroyTexture addIcon
+    SDL.destroyWindow window
+    SDL.destroyRenderer renderer
+    Font.free robotoMedium
+    Font.free robotoSmall
+    Font.free robotoZero
+
+    Image.quit
     Font.quit
     SDL.quit

@@ -32,6 +32,7 @@ import qualified SDL.Primitive as GFX
 import SDL.Font (Font)
 import qualified SDL.Font as Font
 import SDL (Point(..), V2(..), V4(..), (.+^), ($=))
+import qualified SDL.Video.Renderer as Renderer
 import qualified SDL
 
 data DrawingPrimitive
@@ -139,6 +140,9 @@ drawPrimitive renderer (DrawText font color text pos) = do
     (width, height) <- Font.size font text
     texture <- SDL.createTextureFromSurface renderer surface
     SDL.copy renderer texture Nothing $ Just $ SDL.Rectangle pos (fromIntegral <$> V2 width height)
+
+    SDL.freeSurface surface
+    Renderer.destroyTexture texture
 drawPrimitive renderer (DrawTexture texture rect) = do
     SDL.copy renderer texture Nothing $ Just $ rect
 
